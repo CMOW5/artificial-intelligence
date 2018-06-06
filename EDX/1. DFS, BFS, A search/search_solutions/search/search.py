@@ -73,6 +73,13 @@ def tinyMazeSearch(problem):
     w = Directions.WEST
     return  [s, s, w, s, w, w, s, w]
 
+def nullHeuristic(state, problem=None):
+    """
+    A heuristic function estimates the cost from the current state to the nearest
+    goal in the provided SearchProblem.  This heuristic is trivial.
+    """
+    return 0
+
 def depthFirstSearch(problem):
     """
     Search the deepest nodes in the search tree first.
@@ -126,7 +133,23 @@ def uniformCostSearch(problem):
     return actions
 
 
-def graphSearch(problem, fringe, strategy):
+def aStarSearch(problem, heuristic=nullHeuristic):
+    """Search the node that has the lowest combined cost and heuristic first."""
+    "*** YOUR CODE HERE ***"
+    from game import Directions
+    from util import PriorityQueue
+    import itertools
+
+    strategy = 'astar'
+    fringe = PriorityQueue()
+    fringe.push([problem.getStartState(), [], 0], 0)
+    actions = graphSearch(problem, fringe, strategy, heuristic)
+    return actions
+
+    util.raiseNotDefined()
+
+def graphSearch(problem, fringe, strategy, heuristic=nullHeuristic):
+
     closed = set();
 
     while True:
@@ -136,24 +159,24 @@ def graphSearch(problem, fringe, strategy):
 
         node = removeFront(fringe, strategy)
         state = node[0]
-        path = node[1]
-        cost = node[2]
 
         if problem.isGoalState(state):
+            path = node[1]
             print 'path = ', path
+            print 'steps = ', len(path)
+            return []
             return path
 
         if not state in closed:
-            closed.add(state)
+            closed.add(state) # error
             for child_node in problem.getSuccessors(state):
-                fringe = insert(node, child_node, fringe, strategy)  # push in fringe
+                fringe = insert(problem, fringe, strategy, heuristic, node, child_node)  # push in fringe
 
     util.raiseNotDefined()
 
 def removeFront(fringe, strategy):
     node = fringe.pop()
     return node
-
 
 """inserts a new node into the fringe .
 
@@ -173,82 +196,31 @@ def removeFront(fringe, strategy):
    Returns:
        the new fringe
    """
-def insert(node, childNode, fringe, strategy):
+def insert(problem, fringe, strategy, heuristic, node, childNode):
+
+    nodeCost = node[2]
+    childNodeCost = childNode[2]
     newState = childNode[0]
     newAction = childNode[1]
-    path = list(node[1])
+    path = list(node[1]) #copy node[1] to path
     path.append(newAction)
 
     if (strategy == 'ucs'):
-        currentCost = node[2];
-        childNodeCost = childNode[2]
-        cumulativeCost = currentCost + childNodeCost
+        cumulativeCost = nodeCost + childNodeCost
         fringe.push([newState, path, cumulativeCost], cumulativeCost)
+
     elif (strategy == 'astar'):
-        pass
-    else:
-        newCost = childNode[2]
-        fringe.push([newState, path, newCost])
+        nextPosition = childNode[0]
+        h = heuristic(nextPosition, problem)
+        g = nodeCost + childNodeCost
+        f = g + h
+        fringe.push([newState, path, g], f)
+
+    elif (strategy == 'dfs' or strategy == 'bfs'):
+        fringe.push([newState, path, childNodeCost])
 
     return fringe
 
-def nullHeuristic(state, problem=None):
-    """
-    A heuristic function estimates the cost from the current state to the nearest
-    goal in the provided SearchProblem.  This heuristic is trivial.
-    """
-    return 0
-
-def aStarSearch(problem, heuristic=nullHeuristic):
-    """Search the node that has the lowest combined cost and heuristic first."""
-    "*** YOUR CODE HERE ***"
-    from game import Directions
-    from util import Stack, Queue, PriorityQueue#, manhattanDistance
-    import itertools
-
-    strategy = 'astar'
-    closed = set();
-    fringe = PriorityQueue();
-    fringe.push([problem.getStartState(), [], 0], 0)
-
-    while True:
-        if fringe.isEmpty():
-            print "Failure, fringe is empty"
-            return []
-
-        node = removeFront(fringe, strategy)
-        state = node[0]
-        path = node[1]
-        cost = node[2]
-
-        if problem.isGoalState(state):
-            print 'path = ', path
-            return path
-
-        if not state in closed:
-            closed.add(state)
-            for child_node in problem.getSuccessors(state):
-                fringe = insert2(problem, node, child_node, fringe, strategy, heuristic)  # push in fringe
-
-    util.raiseNotDefined()
-
-def insert2(problem, node, childNode, fringe, strategy, heuristic):
-    newState = childNode[0]
-    newAction = childNode[1]
-    path = list(node[1])
-    path.append(newAction)
-
-    #goalPosition = problem.goal
-    nextPosition = childNode[0]
-    prevCost = node[2]
-    childNodeCost = childNode[2]
-
-    h = heuristic(nextPosition, problem)  # manhattanDistance(nextPosition,goalPosition)
-    g = prevCost + childNodeCost
-    f = g + h
-    fringe.push([newState, path, g], f)
-
-    return fringe
 
 # Abbreviations
 bfs = breadthFirstSearch
