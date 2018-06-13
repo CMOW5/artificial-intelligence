@@ -400,6 +400,40 @@ def cornersHeuristic(state, problem):
     visitedCorners = list(state[1])
     distances = []
 
+    totalDistance = totalDistanceHeuristic(position, corners, visitedCorners)
+    return totalDistance
+    #util.raiseNotDefined()
+
+""" 
+    calculates the total distance between the current position
+    and the path through all the remaining not visited corners
+"""
+def totalDistanceHeuristic(currentPosition, corners, visitedCorners):
+    distances = []
+
+    for index, corner in enumerate(corners):
+        if (corner == currentPosition):
+            continue
+        if not visitedCorners[index]:
+            distance = manhattanDistance(currentPosition, corner);
+            distances.append([index,distance])
+
+    if not len(distances):
+        return 0;
+    else:
+        index, minDistance = min(distances, key = lambda x : x[1]) # min with the distances values
+        nextCorner = corners[index]
+        visitedCorners[index] = True
+        totalDistance = minDistance + totalDistanceHeuristic(nextCorner, corners, visitedCorners)
+        return totalDistance
+
+"""
+    this heutistic calculate the distance between the current position
+    and the furthest not visited corner
+"""
+def visitedCornersHeuristic(position, corners, visitedCorners):
+    distances = []
+
     for index, visitedCorner in enumerate(visitedCorners):
         if not visitedCorner:
             corner = corners[index]
@@ -411,8 +445,6 @@ def cornersHeuristic(state, problem):
         return max(distances)
     else:
         return 0
-
-    # return 0 # Default to trivial solution
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -520,19 +552,11 @@ def foodHeuristic(state, problem):
     #return closestDot(position, foodGrid.asList())
     #return furthestDot(position, foodGrid.asList())
     #return foodLeft(foodGrid)
-
     """
     if (problem.heuristicInfo.get('a',True)) :
         print 'fg = ', foodGrid
         problem.heuristicInfo['a'] = False
     """
-
-
-
-
-
-    "*** YOUR CODE HERE ***"
-    return foodLeft
 
 def closestDot(pacmanPosition, foodPositions):
     distances = []
@@ -585,6 +609,7 @@ class ClosestDotSearchAgent(SearchAgent):
         print 'Path found with cost %d.' % len(self.actions)
 
     def findPathToClosestDot(self, gameState):
+        from util import PriorityQueue
         """
         Returns a path (a list of actions) to the closest dot, starting from
         gameState.
@@ -596,7 +621,41 @@ class ClosestDotSearchAgent(SearchAgent):
         problem = AnyFoodSearchProblem(gameState)
 
         "*** YOUR CODE HERE ***"
+        fringe = PriorityQueue()
+        fringe.push([startPosition, [], 0], 0)
+        actions = self.graphSearch(problem, fringe)
+        return actions
+
+
         util.raiseNotDefined()
+
+    def graphSearch(self, problem, fringe):
+        closed = set()
+
+        while True:
+            if fringe.isEmpty():
+                print "Failure, fringe is empty"
+                return []
+
+            node = fringe.pop()
+            state = node[0]
+
+            if problem.isGoalState(state):
+                path = node[1]
+                return path
+
+            if not state in closed:
+                closed.add(state)
+                for child_node in problem.getSuccessors(state):
+                    newState = child_node[0]
+                    newAction = child_node[1]
+                    cost = child_node[2]
+                    path = list(node[1])  # copy node[1] to path
+                    path.append(newAction)
+                    fringe.push([newState, path, cost], cost)
+
+        util.raiseNotDefined()
+
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """
@@ -630,9 +689,19 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         complete the problem definition.
         """
         x,y = state
-
         "*** YOUR CODE HERE ***"
+        goal = self.closestFood(self.startState, self.food)
+        return state == goal
+
         util.raiseNotDefined()
+
+    def closestFood(self, position, food):
+        distances = {}
+        foodList = food.asList()
+        for foodPosition in foodList:
+            distance = manhattanDistance(position, foodPosition)
+            distances[foodPosition] = distance
+        return min(distances, key=distances.get)
 
 def mazeDistance(point1, point2, gameState):
     """
