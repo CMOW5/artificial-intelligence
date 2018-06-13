@@ -149,8 +149,7 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     util.raiseNotDefined()
 
 def graphSearch(problem, fringe, strategy, heuristic=nullHeuristic):
-
-    closed = set();
+    closed = set()
 
     while True:
         if fringe.isEmpty():
@@ -164,11 +163,11 @@ def graphSearch(problem, fringe, strategy, heuristic=nullHeuristic):
             path = node[1]
             print 'path = ', path
             print 'steps = ', len(path)
-            return []
+            # return []
             return path
 
         if not state in closed:
-            closed.add(state) # error
+            closed.add(state)
             for child_node in problem.getSuccessors(state):
                 fringe = insert(problem, fringe, strategy, heuristic, node, child_node)  # push in fringe
 
