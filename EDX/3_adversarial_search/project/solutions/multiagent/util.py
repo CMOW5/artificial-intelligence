@@ -225,8 +225,8 @@ class PriorityQueueWithFunction(PriorityQueue):
 
     def __init__(self, priorityFunction):
         "priorityFunction (item) -> priority"
-        self.priorityFunction = priorityFunction      # store the priority function
-        PriorityQueue.__init__(self)        # super-class initializer
+        self.priorityFunction = priorityFunction  # store the priority function
+        PriorityQueue.__init__(self)  # super-class initializer
 
     def push(self, item):
         "Adds an item to the queue with priority from the priority function"
@@ -236,6 +236,10 @@ class PriorityQueueWithFunction(PriorityQueue):
 def manhattanDistance(xy1, xy2):
     "Returns the Manhattan distance between points xy1 and xy2"
     return abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
+
+
+def euclidean_distance(xy1, xy2):
+    return ((xy1[0] - xy2[0]) ** 2 + (xy1[1] - xy2[1]) ** 2) ** 0.5
 
 
 """
@@ -330,6 +334,7 @@ class Counter(dict):
         sortedItems = list(self.items())
 
         def compare(x, y): return sign(y[1] - x[1])
+
         sortedItems.sort(cmp=compare)
         return [x[0] for x in sortedItems]
 
@@ -576,7 +581,7 @@ def sign(x):
     """
     Returns 1 or -1 depending on the sign of x
     """
-    if(x >= 0):
+    if (x >= 0):
         return 1
     else:
         return -1
@@ -702,9 +707,9 @@ def mutePrint():
     _MUTED = True
 
     _ORIGINAL_STDOUT = sys.stdout
-    #_ORIGINAL_STDERR = sys.stderr
+    # _ORIGINAL_STDERR = sys.stderr
     sys.stdout = WritableNull()
-    #sys.stderr = WritableNull()
+    # sys.stderr = WritableNull()
 
 
 def unmutePrint():
@@ -714,4 +719,4 @@ def unmutePrint():
     _MUTED = False
 
     sys.stdout = _ORIGINAL_STDOUT
-    #sys.stderr = _ORIGINAL_STDERR
+    # sys.stderr = _ORIGINAL_STDERR

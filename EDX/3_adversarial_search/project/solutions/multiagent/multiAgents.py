@@ -10,15 +10,26 @@
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
-
-
-from util import manhattanDistance
-from game import Directions
-import random, util
+import random
+import util
 
 from game import Agent
+from pacman import GameState
+
 
 class ReflexAgent(Agent):
+    test_count = 0  # define static class variable
+
+    ghost_penalization = 10000
+
+    eaten_food_points = 1200
+
+    all_food_eaten_points = 5000
+
+    distance_coefficient = 1000
+
+    pacman_distance_from_ghost_coefficient = 1
+
     """
     A reflex agent chooses an action at each choice point by examining
     its alternatives via a state evaluation function.
@@ -28,8 +39,7 @@ class ReflexAgent(Agent):
     headers.
     """
 
-
-    def getAction(self, gameState):
+    def getAction(self, game_state):
         """
         You do not need to change this method, but you're welcome to.
 
@@ -39,19 +49,31 @@ class ReflexAgent(Agent):
         some Directions.X for some X in the set {NORTH, SOUTH, WEST, EAST, STOP}
         """
         # Collect legal moves and child states
-        legalMoves = gameState.getLegalActions()
+        legal_moves = game_state.getLegalActions()  # {NORTH, SOUTH, WEST, EAST, STOP}
+
+        print('\n###### new iteration ######\n')
+        print('legalMoves = ', legal_moves)
 
         # Choose one of the best actions
-        scores = [self.evaluationFunction(gameState, action) for action in legalMoves]
-        bestScore = max(scores)
-        bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
-        chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+        scores = [self.evaluationFunction(game_state, action) for action in legal_moves]
+        print('scores to choose = ', scores)
+
+        best_score = max(scores)
+        print('bestScore = ', best_score)
+
+        best_indices = [index for index in range(len(scores)) if scores[index] == best_score]
+        print('bestIndices = ', best_indices)
+
+        chosenIndex = random.choice(best_indices)  # Pick randomly among the best
+        print('chosenIndex = ', chosenIndex)
+
+        print('chosen move = ', legal_moves[chosenIndex])
 
         "Add more of your code here if you want to"
 
-        return legalMoves[chosenIndex]
+        return legal_moves[chosenIndex]
 
-    def evaluationFunction(self, currentGameState, action):
+    def evaluationFunction(self, current_game_state, action):
         """
         Design a better evaluation function here.
 
@@ -66,15 +88,75 @@ class ReflexAgent(Agent):
         Print out these variables to see what you're getting, then combine them
         to create a masterful evaluation function.
         """
+
         # Useful information you can extract from a GameState (pacman.py)
-        childGameState = currentGameState.getPacmanNextState(action)
-        newPos = childGameState.getPacmanPosition()
-        newFood = childGameState.getFood()
-        newGhostStates = childGameState.getGhostStates()
-        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+        # child_game_state = current_game_state.getPacmanNextState(action)  # GameState (layout ??)
+        # newPos = child_game_state.getPacmanPosition()  # current pacman coordinates (3,1)
+        # newFood = child_game_state.getFood()  # newFood = layout with food F = not food, T = food
+        # newGhostStates = child_game_state.getGhostStates()  # [game.AgentState] // for each ghost
+        # newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]  # [0]
 
         "*** YOUR CODE HERE ***"
-        return childGameState.getScore()
+        best_score = self.calculate_best_score(current_game_state, action)
+        print("returning best score = ", best_score)
+
+        return best_score['score']
+
+    def calculate_best_score(self, game_state: GameState, action):
+        print('\ncurrent Action = ', action)
+
+        #  pacman
+        next_game_state = game_state.getPacmanNextState(action)
+        next_pacman_position = next_game_state.getPacmanPosition()
+        print('\nnext pacman position = ', next_pacman_position)
+
+        # ghost
+        next_ghost_position = tuple(map(lambda v: int(v), next_game_state.getGhostPosition(1)))
+        print('\nnext Ghost position = ', next_ghost_position)
+
+        next_food_layout = next_game_state.getFood()
+
+        print('next_food_layout = \n')
+        print(next_food_layout, '\n')
+
+        food_points = ReflexAgent.eaten_food_points if next_game_state.getNumFood() < game_state.getNumFood() else 0
+
+        ghost_penalization = ReflexAgent.ghost_penalization if self.pacman_will_die(next_pacman_position,
+                                                                                    next_ghost_position) else 0
+
+        scores = []
+
+        for x in range(next_food_layout.width):
+            for y in range(next_food_layout.height):
+                if self.has_food(next_food_layout, x, y):
+                    pacman_distance_from_food = util.euclidean_distance(next_pacman_position, [x, y])
+                    distance_points = ReflexAgent.distance_coefficient / pacman_distance_from_food
+
+                    score = distance_points + food_points - ghost_penalization
+                    scores.append({'distance': pacman_distance_from_food, 'score': score, 'foodAt': [x, y]})
+
+        if len(scores) == 0:
+            print('\nall food has been eaten == 0\n')
+
+            score = ReflexAgent.all_food_eaten_points - ghost_penalization
+
+            scores.append({'distance': 0, 'score': score, 'foodAt': None})
+
+        # best score first
+        scores.sort(key=lambda s: s['score'], reverse=True)
+
+        print('sorted scores = ', scores)
+
+        # get the best score
+        return scores[0]
+
+    def pacman_will_die(self, next_pacman_position, next_ghost_position):
+        pacman_distance_from_ghost = util.euclidean_distance(next_pacman_position, next_ghost_position)
+        return pacman_distance_from_ghost <= ReflexAgent.pacman_distance_from_ghost_coefficient
+
+    def has_food(self, food_layout, x, y):
+        return food_layout[x][y]
+
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -85,6 +167,7 @@ def scoreEvaluationFunction(currentGameState):
     (not reflex agents).
     """
     return currentGameState.getScore()
+
 
 class MultiAgentSearchAgent(Agent):
     """
@@ -101,10 +184,11 @@ class MultiAgentSearchAgent(Agent):
     is another abstract class.
     """
 
-    def __init__(self, evalFn = 'scoreEvaluationFunction', depth = '2'):
-        self.index = 0 # Pacman is always agent index 0
+    def __init__(self, evalFn='scoreEvaluationFunction', depth='2'):
+        self.index = 0  # Pacman is always agent index 0
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
+
 
 class MinimaxAgent(MultiAgentSearchAgent):
     """
@@ -137,6 +221,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
 
+
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
     Your minimax agent with alpha-beta pruning (question 3)
@@ -148,6 +233,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
+
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
@@ -164,6 +250,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
 
+
 def betterEvaluationFunction(currentGameState):
     """
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
@@ -173,6 +260,7 @@ def betterEvaluationFunction(currentGameState):
     """
     "*** YOUR CODE HERE ***"
     util.raiseNotDefined()
+
 
 # Abbreviation
 better = betterEvaluationFunction
