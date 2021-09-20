@@ -11,6 +11,8 @@
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 import random
+from typing import List, Tuple
+
 import util
 
 from game import Agent
@@ -111,8 +113,11 @@ class ReflexAgent(Agent):
         print('\nnext pacman position = ', next_pacman_position)
 
         # ghost
-        next_ghost_position = tuple(map(lambda v: int(v), next_game_state.getGhostPosition(1)))
-        print('\nnext Ghost position = ', next_ghost_position)
+        # next_ghost_position = tuple(map(lambda v: int(v), next_game_state.getGhostPosition(1)))
+        # print('\nnext Ghost position = ', next_ghost_position)
+
+        next_ghost_positions = next_game_state.getGhostPositions()
+        print('\nnext Ghost positions = ', next_ghost_positions)
 
         next_food_layout = next_game_state.getFood()
 
@@ -122,7 +127,7 @@ class ReflexAgent(Agent):
         food_points = ReflexAgent.eaten_food_points if next_game_state.getNumFood() < game_state.getNumFood() else 0
 
         ghost_penalization = ReflexAgent.ghost_penalization if self.pacman_will_die(next_pacman_position,
-                                                                                    next_ghost_position) else 0
+                                                                                    next_ghost_positions) else 0
 
         scores = []
 
@@ -133,7 +138,8 @@ class ReflexAgent(Agent):
                     distance_points = ReflexAgent.distance_coefficient / pacman_distance_from_food
 
                     score = distance_points + food_points - ghost_penalization
-                    scores.append({'distance': pacman_distance_from_food, 'score': score, 'foodAt': [x, y]})
+                    scores.append({'distance': pacman_distance_from_food, 'score': score,
+                                   'foodAt': [x, y], 'action': action})
 
         if len(scores) == 0:
             print('\nall food has been eaten == 0\n')
@@ -150,9 +156,19 @@ class ReflexAgent(Agent):
         # get the best score
         return scores[0]
 
+    # def pacman_will_die(self, next_pacman_position, next_ghost_positions: List[Tuple]):
+    def pacman_will_die(self, next_pacman_position, next_ghost_positions):
+        for next_ghost_position in next_ghost_positions:
+            pacman_distance_from_ghost = util.euclidean_distance(next_pacman_position, next_ghost_position)
+            if pacman_distance_from_ghost <= ReflexAgent.pacman_distance_from_ghost_coefficient:
+                return True
+        return False
+
+    """
     def pacman_will_die(self, next_pacman_position, next_ghost_position):
         pacman_distance_from_ghost = util.euclidean_distance(next_pacman_position, next_ghost_position)
         return pacman_distance_from_ghost <= ReflexAgent.pacman_distance_from_ghost_coefficient
+    """
 
     def has_food(self, food_layout, x, y):
         return food_layout[x][y]
