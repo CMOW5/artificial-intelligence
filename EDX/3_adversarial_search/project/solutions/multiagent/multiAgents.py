@@ -16,6 +16,7 @@ from typing import List, Tuple
 import util
 
 from game import Agent
+import graphSearchProblem
 from pacman import GameState
 
 
@@ -134,11 +135,14 @@ class ReflexAgent(Agent):
         for x in range(next_food_layout.width):
             for y in range(next_food_layout.height):
                 if self.has_food(next_food_layout, x, y):
-                    pacman_distance_from_food = util.euclidean_distance(next_pacman_position, [x, y])
-                    distance_points = ReflexAgent.distance_coefficient / pacman_distance_from_food
+                    pacman_distance_to_food = self.calculate_food_distance(game_state,
+                                                                             pacman_position=next_pacman_position,
+                                                                             food_position=(x, y))
+
+                    distance_points = ReflexAgent.distance_coefficient / pacman_distance_to_food
 
                     score = distance_points + food_points - ghost_penalization
-                    scores.append({'distance': pacman_distance_from_food, 'score': score,
+                    scores.append({'distance': pacman_distance_to_food, 'score': score,
                                    'foodAt': [x, y], 'action': action})
 
         if len(scores) == 0:
@@ -156,6 +160,18 @@ class ReflexAgent(Agent):
         # get the best score
         return scores[0]
 
+    def calculate_food_distance(self, game_state, pacman_position, food_position):
+        """
+        problem = graphSearchProblem.PositionSearchProblem(game_state,
+                                                           start=pacman_position,
+                                                           goal=food_position,
+                                                           warn=False, visualize=False)
+        path_to_food = graphSearchProblem.aStarSearch(problem)
+        distance = len(path_to_food)
+        """
+        distance = util.euclidean_distance(pacman_position, food_position)
+        return distance
+
     # def pacman_will_die(self, next_pacman_position, next_ghost_positions: List[Tuple]):
     def pacman_will_die(self, next_pacman_position, next_ghost_positions):
         for next_ghost_position in next_ghost_positions:
@@ -172,7 +188,6 @@ class ReflexAgent(Agent):
 
     def has_food(self, food_layout, x, y):
         return food_layout[x][y]
-
 
 def scoreEvaluationFunction(currentGameState):
     """
