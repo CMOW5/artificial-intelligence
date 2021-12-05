@@ -11,11 +11,12 @@
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 import random
+import math
 from typing import List, Tuple
 
 import util
 
-from game import Agent
+from game import Agent, Directions
 import graphSearchProblem
 from pacman import GameState
 
@@ -54,23 +55,14 @@ class ReflexAgent(Agent):
         # Collect legal moves and child states
         legal_moves = game_state.getLegalActions()  # {NORTH, SOUTH, WEST, EAST, STOP}
 
-        print('\n###### new iteration ######\n')
-        print('legalMoves = ', legal_moves)
-
         # Choose one of the best actions
         scores = [self.evaluationFunction(game_state, action) for action in legal_moves]
-        print('scores to choose = ', scores)
 
         best_score = max(scores)
-        print('bestScore = ', best_score)
 
         best_indices = [index for index in range(len(scores)) if scores[index] == best_score]
-        print('bestIndices = ', best_indices)
 
         chosenIndex = random.choice(best_indices)  # Pick randomly among the best
-        print('chosenIndex = ', chosenIndex)
-
-        print('chosen move = ', legal_moves[chosenIndex])
 
         "Add more of your code here if you want to"
 
@@ -101,29 +93,21 @@ class ReflexAgent(Agent):
 
         "*** YOUR CODE HERE ***"
         best_score = self.calculate_best_score(current_game_state, action)
-        print("returning best score = ", best_score)
 
         return best_score['score']
 
     def calculate_best_score(self, game_state: GameState, action):
-        print('\ncurrent Action = ', action)
-
         #  pacman
         next_game_state = game_state.getPacmanNextState(action)
         next_pacman_position = next_game_state.getPacmanPosition()
-        print('\nnext pacman position = ', next_pacman_position)
 
         # ghost
         # next_ghost_position = tuple(map(lambda v: int(v), next_game_state.getGhostPosition(1)))
         # print('\nnext Ghost position = ', next_ghost_position)
 
         next_ghost_positions = next_game_state.getGhostPositions()
-        print('\nnext Ghost positions = ', next_ghost_positions)
 
         next_food_layout = next_game_state.getFood()
-
-        print('next_food_layout = \n')
-        print(next_food_layout, '\n')
 
         food_points = ReflexAgent.eaten_food_points if next_game_state.getNumFood() < game_state.getNumFood() else 0
 
@@ -136,8 +120,8 @@ class ReflexAgent(Agent):
             for y in range(next_food_layout.height):
                 if self.has_food(next_food_layout, x, y):
                     pacman_distance_to_food = self.calculate_food_distance(game_state,
-                                                                             pacman_position=next_pacman_position,
-                                                                             food_position=(x, y))
+                                                                           pacman_position=next_pacman_position,
+                                                                           food_position=(x, y))
 
                     distance_points = ReflexAgent.distance_coefficient / pacman_distance_to_food
 
@@ -146,16 +130,12 @@ class ReflexAgent(Agent):
                                    'foodAt': [x, y], 'action': action})
 
         if len(scores) == 0:
-            print('\nall food has been eaten == 0\n')
-
             score = ReflexAgent.all_food_eaten_points - ghost_penalization
 
             scores.append({'distance': 0, 'score': score, 'foodAt': None})
 
         # best score first
         scores.sort(key=lambda s: s['score'], reverse=True)
-
-        print('sorted scores = ', scores)
 
         # get the best score
         return scores[0]
@@ -188,6 +168,7 @@ class ReflexAgent(Agent):
 
     def has_food(self, food_layout, x, y):
         return food_layout[x][y]
+
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -226,7 +207,9 @@ class MinimaxAgent(MultiAgentSearchAgent):
     Your minimax agent (question 2)
     """
 
-    def getAction(self, gameState):
+    pacman_index = 0
+
+    def getAction(self, game_state: GameState):
         """
         Returns the minimax action from the current gameState using self.depth
         and self.evaluationFunction.
@@ -250,7 +233,97 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        """
+        # Generate candidate actions
+        legal_actions = game_state.getLegalPacmanActions()
+
+        if Directions.STOP in legal_actions:
+            legal_actions.remove(Directions.STOP)
+
+        children = [(game_state.getPacmanNextState(action), action) for action in legal_actions]
+        scored = [(self.evaluationFunction(state), action) for state, action in children]
+
+        bestScore = max(scored)[0]
+        bestActions = [pair[1] for pair in scored if pair[0] == bestScore]
+
+        print('best actions = ', bestActions)
+
+        return random.choice(bestActions)
+        """
+
+        # Generate candidate actions
+        legal_actions = game_state.getLegalActions(self.pacman_index)
+
+        # if Directions.STOP in legal_actions:
+        #    legal_actions.remove(Directions.STOP)
+
+        # since we're expanding the root node, we need to call min_value since the next node is a min node
+        scores = [self.min_value(game_state.getNextState(self.pacman_index, action), depth=0, ghost_index=0) for action
+                  in legal_actions]
+        best_score = max(scores)
+        best_indices = [index for index in range(len(scores)) if scores[index] == best_score]
+        chosen_index = random.choice(best_indices)  # Pick randomly among the best
+
+        # input('next')
+
+        return legal_actions[chosen_index]
+
+        # util.raiseNotDefined()
+
+    # ghost moved, now is time for the pacman to move. Or maybe root?
+    def max_value(self, game_state: GameState, depth):
+
+        if self.is_terminal_state(game_state, depth):
+            return self.evaluationFunction(game_state)
+
+        value = -math.inf
+
+        legal_actions = game_state.getLegalActions(self.pacman_index)
+
+        for action in legal_actions:
+            successor = game_state.getNextState(self.pacman_index, action)
+            value = max(value, self.min_value(successor, depth=depth, ghost_index=0))
+
+        return value
+
+    # pacman moved, now is time for the ghost to move
+    def min_value(self, game_state: GameState, depth=0, ghost_index=0):
+
+        # next_ghost_to_move
+        ghost_index += 1
+
+        if self.is_a_new_level_of_search(game_state, ghost_index):
+            depth = depth + 1
+
+        if game_state.isWin() or game_state.isLose():
+            return self.evaluationFunction(game_state)
+
+        value = math.inf
+
+        legal_actions = game_state.getLegalActions(ghost_index)
+
+        for action in legal_actions:
+            successor = game_state.getNextState(ghost_index, action)
+
+            if self.is_a_new_level_of_search(game_state, ghost_index):
+                # let's move on with pacman since this is the last agent (new max node)
+                value = min(value, self.max_value(successor, depth=depth))
+            else:
+                # next on the tree is another minimizer, lets continue with another ghost
+                value = min(value, self.min_value(successor, depth=depth, ghost_index=ghost_index))
+
+        return value
+
+    def is_terminal_state(self, game_state: GameState, current_depth):
+        return game_state.isWin() or game_state.isLose() or current_depth == self.depth
+
+    """
+    A single level of the search is considered to be one Pacman move and all the ghosts’ responses, 
+    so depth 2 search will involve Pacman and each ghost moving twice.
+    """
+    def is_a_new_level_of_search(self, game_state: GameState, current_ghost_index):
+        return current_ghost_index == game_state.getNumAgents() - 1
 
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
