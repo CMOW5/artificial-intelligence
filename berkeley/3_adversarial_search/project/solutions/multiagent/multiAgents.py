@@ -415,8 +415,9 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
     """
       Your expectimax agent (question 4)
     """
+    pacman_index = 0
 
-    def getAction(self, gameState):
+    def getAction(self, game_state: GameState):
         """
         Returns the expectimax action using self.depth and self.evaluationFunction
 
@@ -424,7 +425,80 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         legal moves.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # Generate candidate actions
+        legal_actions = game_state.getLegalActions(self.pacman_index)
+
+        # if Directions.STOP in legal_actions:
+        #    legal_actions.remove(Directions.STOP)
+
+        # since we're expanding the root node, we need to call min_value since the next node is a min node
+        scores = [self.exp_value(game_state.getNextState(self.pacman_index, action), depth=0, ghost_index=0) for action
+                  in legal_actions]
+        best_score = max(scores)
+        best_indices = [index for index in range(len(scores)) if scores[index] == best_score]
+        chosen_index = random.choice(best_indices)  # Pick randomly among the best
+
+        # input('next')
+
+        return legal_actions[chosen_index]
+
+    # ghost moved, now is time for the pacman to move. Or maybe root?
+    def max_value(self, game_state: GameState, depth):
+
+        if self.is_terminal_state(game_state, depth):
+            return self.evaluationFunction(game_state)
+
+        value = -math.inf
+
+        legal_actions = game_state.getLegalActions(self.pacman_index)
+
+        for action in legal_actions:
+            successor = game_state.getNextState(self.pacman_index, action)
+            value = max(value, self.exp_value(successor, depth=depth, ghost_index=0))
+
+        return value
+
+    # pacman moved, now is time for the ghost to move
+    def exp_value(self, game_state: GameState, depth=0, ghost_index=0):
+
+        # next_ghost_to_move
+        ghost_index += 1
+
+        if self.is_a_new_level_of_search(game_state, ghost_index):
+            depth = depth + 1
+
+        if game_state.isWin() or game_state.isLose():
+            return self.evaluationFunction(game_state)
+
+        value = 0
+
+        legal_actions = game_state.getLegalActions(ghost_index)
+
+        for action in legal_actions:
+            successor = game_state.getNextState(ghost_index, action)
+
+            probability = 1 / len(legal_actions)
+
+            if self.is_a_new_level_of_search(game_state, ghost_index):
+                # let's move on with pacman since this is the last agent (new max node)
+                value += probability * self.max_value(successor, depth=depth)
+            else:
+                # next on the tree is another minimizer, lets continue with another ghost
+                value += probability * self.exp_value(successor, depth=depth, ghost_index=ghost_index)
+
+        return value
+
+    def is_terminal_state(self, game_state: GameState, current_depth):
+        return game_state.isWin() or game_state.isLose() or current_depth == self.depth
+
+    """
+    A single level of the search is considered to be one Pacman move and all the ghosts’ responses, 
+    so depth 2 search will involve Pacman and each ghost moving twice.
+    """
+
+    def is_a_new_level_of_search(self, game_state: GameState, current_ghost_index):
+        return current_ghost_index == game_state.getNumAgents() - 1
+
 
 
 def betterEvaluationFunction(currentGameState):
