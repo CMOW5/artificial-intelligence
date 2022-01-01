@@ -500,8 +500,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         return current_ghost_index == game_state.getNumAgents() - 1
 
 
-
-def betterEvaluationFunction(currentGameState):
+def betterEvaluationFunction(current_game_state: GameState):
     """
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
     evaluation function (question 5).
@@ -509,7 +508,66 @@ def betterEvaluationFunction(currentGameState):
     DESCRIPTION: <write something here so we know what you did>
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+
+    base_score = current_game_state.getScore()
+    food_score = calculate_food_score(current_game_state)
+    food_distance_score = calculate_food_distance_score(current_game_state)
+    capsule_score = calculate_capsule_score(current_game_state)
+
+    score = base_score + food_score + capsule_score
+    return score
+
+
+def calculate_food_score(game_state: GameState):
+    food_layout = game_state.getFood()
+
+    initial_food = food_layout.width * food_layout.height
+
+    return initial_food - game_state.getNumFood()
+
+    """
+    min_distance = math.inf
+    distance_coefficient = 100
+
+    for x in range(food_layout.width):
+        for y in range(food_layout.height):
+            # has food
+            if food_layout[x][y]:
+                pacman_distance_from_food = util.manhattanDistance(game_state.getPacmanPosition(), (x, y))
+                min_distance = min(min_distance, pacman_distance_from_food)
+
+    print('efff', distance_coefficient / min_distance)
+
+    return distance_coefficient / min_distance
+    """
+
+
+def calculate_food_distance_score(game_state: GameState):
+    food_layout = game_state.getFood()
+    min_distance = math.inf
+    distance_coefficient = 100
+
+    for x in range(food_layout.width):
+        for y in range(food_layout.height):
+            # has food
+            if food_layout[x][y]:
+                pacman_distance_from_food = util.manhattanDistance(game_state.getPacmanPosition(), (x, y))
+                min_distance = min(min_distance, pacman_distance_from_food)
+
+    return distance_coefficient / min_distance
+
+
+def calculate_capsule_score(game_state: GameState):
+    capsules = game_state.getCapsules()
+
+    min_distance = math.inf
+    distance_coefficient = 130
+
+    for capsule_position in capsules:
+        pacman_distance_from_capsule = util.manhattanDistance(game_state.getPacmanPosition(), capsule_position)
+        min_distance = min(min_distance, pacman_distance_from_capsule)
+
+    return distance_coefficient / min_distance
 
 
 # Abbreviation
