@@ -63,32 +63,18 @@ class ValueIterationAgent(ValueEstimationAgent):
 
     def runValueIteration(self):
         # Write value iteration code here
-        print('value iteration')
-        print('MDP = ', self.mdp)
-        print('values = ', self.values)
-
-        print('MDP = ', self.mdp.getStates())
-        print('initial state = ', self.mdp.getStartState())
-        print('possible actions = ', self.mdp.getPossibleActions((0, 0)))
-        print('transition states and probs = ', self.mdp.getTransitionStatesAndProbs((0, 0), 'east'))
-
-        # print('possible actions = ', self.mdp.getPossibleActions())
-
         "*** YOUR CODE HERE ***"
-        # todo:
-        # self.values[(0, self.mdp.getStartState(), which_action)] = 0
-
         v_values = dict()  # need to select the max of these
 
         # init V0(s) = 0
         for s in self.mdp.getStates():
-            v_values[(0, s)] = 0, None
+            v_values[(0, s)] = None, 0  # (action, value)
 
         for k in range(1, self.iterations - 1):
 
             for s_state in self.mdp.getStates():
 
-                local_v_values = dict()
+                local_q_values = dict()
 
                 for action in self.mdp.getPossibleActions(s_state):
 
@@ -103,67 +89,46 @@ class ValueIterationAgent(ValueEstimationAgent):
                         reward = self.mdp.getReward(s_state, action, next_state)
 
                         # Vk(s') todo
-                        v_i_value, v_i_action = v_values[(k - 1, next_state)]
+                        #v_i_action, v_i_value = v_values[(k - 1, next_state)]
+                        v_i_action, v_i_value = self.get_max_q_value_for_k_and_state(k-1, next_state, v_values)
 
                         q_value += probability * (reward + (self.discount * v_i_value))
 
-                    # v_values[k, state, action] = q_value
-                    local_v_values[(s_state, action)] = q_value
+                    local_q_values[action] = q_value
 
-                # get max local_v_value and assign it to v_values
-                print('local_v_values = ', local_v_values)
+                # todo when actions = 0
+                """
+                   Note: Make sure to handle the case when a state has no available actions in an MDP 
+                   (think about what this means for future rewards).
+                """
 
-                if len(local_v_values) > 0:
-                    max_local_v_value = sorted(local_v_values.items(), key=lambda item: item[1], reverse=True)[0]
-                    (s, a), max_value = max_local_v_value
-                    v_values[(k, s)] = (max_value, a)
-                else:
-                    """
-                    Note: Make sure to handle the case when a state has no available actions in an MDP 
-                    (think about what this means for future rewards).
-                    """
-                    v_values[(k, s_state)] = (0, None)
+                v_values[(k, s_state)] = local_q_values if (len(local_q_values) > 0) else (None, 0)
 
-                #self.values[s_state] =
+                # get the last iteration values
+                for (i, s) in v_values:
+                    if i is (self.iterations - 2):
+                        self.values[s] = v_values[(i, s)]
 
         print('end v iteration')
-        # get the last iteration values
-        for (k, state) in v_values:
-            if k is (self.iterations - 2):
-                self.values[state] = v_values[(k, state)]
+        #print('v_values = ', v_values)
+        #print('self_values = ', self.values)
 
-        print('self_values = ', self.values)
+    def get_max_q_value_for_k_and_state(self, k, state, v_values):
         """
-        for k in range(1, self.iterations - 1):
-
-            actions = self.mdp.getPossibleActions(state)
-
-            local_v_values = dict()
-
-            for action in actions:
-                transition = self.mdp.getTransitionStatesAndProbs(state, action)
-                q_value = 0
-
-                # Sum s' T(s, a, s') * [R(s, a, s') + Gamma * Vk(s')]
-                # s = state, a = actions, s' = next_state, T(s, a, s') = probability
-                for (next_state, probability) in transition:
-                    # R(s, a, s')
-                    reward = self.mdp.getReward(state, action, next_state)
-
-                    # Vk(s') todo
-                    v_i_value = v_values[(k - 1, next_state)]
-
-                    q_value += probability * (reward + (self.discount * v_i_value))
-
-                # v_values[k, state, action] = q_value
-                local_v_values[(action,)] = q_value
+        return highest => v_i_action, v_i_value
         """
+        filtered = v_values[(k, state)]
+        if filtered == (None, 0):
+            return None, 0
+        return sorted(filtered.items(), key=lambda item: item[1], reverse=True)[0]
 
 
     def getValue(self, state):
         """
           Return the value of the state (computed in __init__).
         """
+        print('calling get values state = ', state)
+        print('get values result = ', self.values[state])
         return self.values[state]
 
     def computeQValueFromValues(self, state, action):
@@ -177,6 +142,7 @@ class ValueIterationAgent(ValueEstimationAgent):
         #self.values[state]
 
         util.raiseNotDefined()
+
     def computeActionFromValues(self, state):
         """
           The policy is the best action in the given state
@@ -189,10 +155,12 @@ class ValueIterationAgent(ValueEstimationAgent):
           computes the best action according to the value function given by self.values.
         """
         "*** YOUR CODE HERE ***"
-        print('state = ', state)
-        # something with ??
-        #self.values[state]
-        util.raiseNotDefined()
+        q_values = self.values[state]
+        if q_values == (None, 0):
+            return None
+
+        action, value = sorted(q_values.items(), key=lambda item: item[1], reverse=True)[0]
+        return action
 
     def getPolicy(self, state):
         return self.computeActionFromValues(state)
