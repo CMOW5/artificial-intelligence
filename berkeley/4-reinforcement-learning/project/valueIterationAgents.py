@@ -68,10 +68,10 @@ class ValueIterationAgent(ValueEstimationAgent):
 
         # init V0(s) = 0
         for s in self.mdp.getStates():
-            v_values[(0, s)] = None, 0  # (action, value)
+            v_values[(0, s)] = dict()  # (action, value)
 
-        for k in range(1, self.iterations - 1):
-
+        for k in range(1, self.iterations):
+            print('k = ', k)
             for s_state in self.mdp.getStates():
 
                 local_q_values = dict()
@@ -89,7 +89,6 @@ class ValueIterationAgent(ValueEstimationAgent):
                         reward = self.mdp.getReward(s_state, action, next_state)
 
                         # Vk(s') todo
-                        #v_i_action, v_i_value = v_values[(k - 1, next_state)]
                         v_i_action, v_i_value = self.get_max_q_value_for_k_and_state(k-1, next_state, v_values)
 
                         q_value += probability * (reward + (self.discount * v_i_value))
@@ -102,7 +101,7 @@ class ValueIterationAgent(ValueEstimationAgent):
                    (think about what this means for future rewards).
                 """
 
-                v_values[(k, s_state)] = local_q_values if (len(local_q_values) > 0) else (None, 0)
+                v_values[(k, s_state)] = local_q_values if (len(local_q_values) > 0) else dict()
 
                 # get the last iteration values
                 for (i, s) in v_values:
@@ -118,7 +117,7 @@ class ValueIterationAgent(ValueEstimationAgent):
         return highest => v_i_action, v_i_value
         """
         filtered = v_values[(k, state)]
-        if filtered == (None, 0):
+        if len(filtered) == 0:
             return None, 0
         return sorted(filtered.items(), key=lambda item: item[1], reverse=True)[0]
 
@@ -129,7 +128,14 @@ class ValueIterationAgent(ValueEstimationAgent):
         """
         print('calling get values state = ', state)
         print('get values result = ', self.values[state])
-        return self.values[state]
+        q_values = self.values[state]
+
+        if len(q_values) == 0:
+            return 0
+
+        action, value = sorted(q_values.items(), key=lambda item: item[1], reverse=True)[0]
+
+        return value
 
     def computeQValueFromValues(self, state, action):
         """
@@ -139,9 +145,12 @@ class ValueIterationAgent(ValueEstimationAgent):
           returns the Q-value of the (state, action) pair given by the value function given by self.values
         """
         "*** YOUR CODE HERE ***"
-        #self.values[state]
+        q_values = self.values[state]
 
-        util.raiseNotDefined()
+        if len(q_values) == 0 or (action not in q_values):
+            return 0
+
+        return q_values[action]
 
     def computeActionFromValues(self, state):
         """
@@ -156,7 +165,7 @@ class ValueIterationAgent(ValueEstimationAgent):
         """
         "*** YOUR CODE HERE ***"
         q_values = self.values[state]
-        if q_values == (None, 0):
+        if len(q_values) == 0:
             return None
 
         action, value = sorted(q_values.items(), key=lambda item: item[1], reverse=True)[0]
