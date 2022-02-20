@@ -64,21 +64,39 @@ class ValueIterationAgent(ValueEstimationAgent):
     def runValueIteration(self):
         # Write value iteration code here
         "*** YOUR CODE HERE ***"
-        v_values = dict()  # need to select the max of these
+        v_k_values = dict()  # need to select the max of these
 
         # init V0(s) = 0
+        """
         for s in self.mdp.getStates():
-            v_values[(0, s)] = dict()  # (action, value)
+            local_q_values = dict()
+            for a in self.mdp.getPossibleActions(s):
+                local_q_values[a] = 0
+            v_values[(0, s)] = local_q_values
+        """
 
-        for k in range(1, self.iterations):
-            print('k = ', k)
-            for s_state in self.mdp.getStates():
+        for k in range(0, self.iterations + 1):
+
+            print('iteration # ', k)
+
+            for state in self.mdp.getStates():
+
+                if k == 0:
+                    v_k_values[(0, state)] = {None: 0}
+                    continue
 
                 local_q_values = dict()
 
-                for action in self.mdp.getPossibleActions(s_state):
+                actions = self.mdp.getPossibleActions(state)
 
-                    transition = self.mdp.getTransitionStatesAndProbs(s_state, action)
+                if len(actions):
+                    pass  # todo
+
+                # ArgMax (Sum s' T(s, a, s') * [R(s, a, s') + Gamma * Vk(s')])
+                # s = state, a = actions, s' = next_state, T(s, a, s') = probability
+                for action in actions:
+
+                    transition = self.mdp.getTransitionStatesAndProbs(state, action)
 
                     q_value = 0
 
@@ -86,12 +104,12 @@ class ValueIterationAgent(ValueEstimationAgent):
                     # s = state, a = actions, s' = next_state, T(s, a, s') = probability
                     for (next_state, probability) in transition:
                         # R(s, a, s')
-                        reward = self.mdp.getReward(s_state, action, next_state)
+                        reward = self.mdp.getReward(state, action, next_state)
 
                         # Vk(s') todo
-                        v_i_action, v_i_value = self.get_max_q_value_for_k_and_state(k-1, next_state, v_values)
+                        v_k_action, v_k_value = self.get_max_q_value_for_k_and_state(k - 1, next_state, v_k_values)
 
-                        q_value += probability * (reward + (self.discount * v_i_value))
+                        q_value += probability * (reward + (self.discount * v_k_value))
 
                     local_q_values[action] = q_value
 
@@ -101,34 +119,62 @@ class ValueIterationAgent(ValueEstimationAgent):
                    (think about what this means for future rewards).
                 """
 
-                v_values[(k, s_state)] = local_q_values if (len(local_q_values) > 0) else dict()
+                v_k_values[(k, state)] = local_q_values  # if (len(local_q_values) > 0) else dict()
 
                 # get the last iteration values
-                for (i, s) in v_values:
-                    if i is (self.iterations - 2):
-                        self.values[s] = v_values[(i, s)]
+                """
+                for (i, s) in v_k_values:
+                    if i is self.iterations:
+                        self.values[s] = v_k_values[(i, s)]
+                """
+
+        # get the last iteration values
+        for (i, s) in v_k_values:
+            if i is self.iterations:
+                self.values[s] = v_k_values[(i, s)]
 
         print('end v iteration')
-        #print('v_values = ', v_values)
-        #print('self_values = ', self.values)
+        # print('v_values = ', v_values)
+        # print('self_values = ', self.values)
 
-    def get_max_q_value_for_k_and_state(self, k, state, v_values):
+    def get_max_q_value_for_k_and_state(self, k, state, v_k_values):
         """
         return highest => v_i_action, v_i_value
         """
-        filtered = v_values[(k, state)]
+        filtered = v_k_values[(k, state)]
+
+        #print('v_k_values = ', v_k_values)
+        #print('filtered = ', filtered)
+
         if len(filtered) == 0:
             return None, 0
-        return sorted(filtered.items(), key=lambda item: item[1], reverse=True)[0]
 
+        return sorted(filtered.items(), key=lambda item: item[1], reverse=True)[0]
 
     def getValue(self, state):
         """
           Return the value of the state (computed in __init__).
         """
-        print('calling get values state = ', state)
-        print('get values result = ', self.values[state])
+        #print('calling get values state = ', state)
+        #print('get values result = ', self.values[state])
+
         q_values = self.values[state]
+
+        if len(q_values) == 0:
+            return 0
+
+        action, value = sorted(q_values.items(), key=lambda item: item[1], reverse=True)[0]
+        return value
+
+        """
+        return self.values[state]
+        """
+
+        """
+        q_values = self.values[state]
+
+        if type(q_values) is not dict:
+            return self.values[state]
 
         if len(q_values) == 0:
             return 0
@@ -136,6 +182,7 @@ class ValueIterationAgent(ValueEstimationAgent):
         action, value = sorted(q_values.items(), key=lambda item: item[1], reverse=True)[0]
 
         return value
+        """
 
     def computeQValueFromValues(self, state, action):
         """
@@ -146,6 +193,9 @@ class ValueIterationAgent(ValueEstimationAgent):
         """
         "*** YOUR CODE HERE ***"
         q_values = self.values[state]
+
+        if len(q_values) == 0:
+            return 0
 
         if len(q_values) == 0 or (action not in q_values):
             return 0
@@ -165,6 +215,10 @@ class ValueIterationAgent(ValueEstimationAgent):
         """
         "*** YOUR CODE HERE ***"
         q_values = self.values[state]
+
+        if self.mdp.isTerminal(state):
+            return None
+
         if len(q_values) == 0:
             return None
 
