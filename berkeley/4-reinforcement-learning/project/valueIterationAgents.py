@@ -41,6 +41,7 @@ class ValueIterationAgent(ValueEstimationAgent):
         for a given number of iterations using the supplied
         discount factor.
     """
+    NO_ACTION_NO_VALUE = {None: 0}
 
     def __init__(self, mdp: mdp.MarkovDecisionProcess, discount=0.9, iterations=100):
         """
@@ -91,30 +92,18 @@ class ValueIterationAgent(ValueEstimationAgent):
                   (think about what this means for future rewards).
                 """
                 if len(actions) == 0:
-                    q_values[None] = 0
+                    q_values = ValueIterationAgent.NO_ACTION_NO_VALUE
 
                 # ArgMax (Sum s' T(s, a, s') * [R(s, a, s') + Gamma * Vk(s')])
                 # s = state, a = actions, s' = next_state, T(s, a, s') = probability
                 for action in actions:
-                    transition = self.mdp.getTransitionStatesAndProbs(state, action)
-                    q_value = 0
-
-                    # Sum s' T(s, a, s') * [R(s, a, s') + Gamma * Vk(s')]
-                    # s = state, a = actions, s' = next_state, T(s, a, s') = probability
-                    for (next_state, probability) in transition:
-                        # R(s, a, s')
-                        reward = self.mdp.getReward(state, action, next_state)
-
-                        # Vk(s')
-                        v_k_action, v_k_value = self.get_q_star_for_k_and_state(k - 1, next_state)
-
-                        q_value += probability * (reward + (self.discount * v_k_value))
-
+                    q_value = self.calculate_q_value(state, action, k)
                     q_values[action] = q_value
 
-                self.q_k_values[(k, state)] = q_values  # if (len(local_q_values) > 0) else dict()
+                self.q_k_values[(k, state)] = q_values
 
-        # get the last iteration values
+        # get the last iteration values, no really needed since we can get these using
+        # get_q_star_for_k_and_state(self.iterations, state)
         for (i, s) in self.q_k_values:
             if i is self.iterations:
                 self.values[s] = self.q_k_values[(i, s)]
@@ -122,7 +111,24 @@ class ValueIterationAgent(ValueEstimationAgent):
     def init_v_0(self):
         for state in self.mdp.getStates():
             # no action and no value for V0s
-            self.q_k_values[(0, state)] = {None: 0}
+            self.q_k_values[(0, state)] = ValueIterationAgent.NO_ACTION_NO_VALUE
+
+    def calculate_q_value(self, state, action, k):
+        transition = self.mdp.getTransitionStatesAndProbs(state, action)
+        q_value = 0
+
+        # Sum s' T(s, a, s') * [R(s, a, s') + Gamma * Vk(s')]
+        # s = state, a = actions, s' = next_state, T(s, a, s') = probability
+        for (next_state, probability) in transition:
+            # R(s, a, s')
+            reward = self.mdp.getReward(state, action, next_state)
+
+            # Vk(s')
+            v_k_action, v_k_value = self.get_q_star_for_k_and_state(k - 1, next_state)
+
+            q_value += probability * (reward + (self.discount * v_k_value))
+
+        return q_value
 
     def get_q_values_for_k_and_state(self, k, state):
         return self.q_k_values[(k, state)]
