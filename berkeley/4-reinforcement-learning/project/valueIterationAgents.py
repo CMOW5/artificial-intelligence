@@ -59,12 +59,13 @@ class ValueIterationAgent(ValueEstimationAgent):
         self.discount = discount
         self.iterations = iterations
         self.values = util.Counter()  # A Counter is a dict with default 0
+        self.q_k_values = dict()
         self.runValueIteration()
 
     def runValueIteration(self):
         # Write value iteration code here
         "*** YOUR CODE HERE ***"
-        v_k_values = dict()  # need to select the max of these
+        #v_k_values = dict()  # need to select the max of these
 
         # init V0(s) = 0
         """
@@ -75,29 +76,32 @@ class ValueIterationAgent(ValueEstimationAgent):
             v_values[(0, s)] = local_q_values
         """
 
-        for k in range(0, self.iterations + 1):
-
-            print('iteration # ', k)
-
+        """ 
+        we need to do 1 more iteration since a policy synthesized from values of depth k 
+        (which reflect the next k rewards) will actually reflect the next k+1 rewards (i.e. you return πk+1). 
+        Similarly, the Q-values will also reflect one more reward than the values (i.e. you return Qk+1).
+        """
+        for k in range(0, self.iterations + 2):
             for state in self.mdp.getStates():
-
                 if k == 0:
-                    v_k_values[(0, state)] = {None: 0}
+                    self.q_k_values[(0, state)] = {None: 0}
                     continue
 
                 local_q_values = dict()
 
                 actions = self.mdp.getPossibleActions(state)
 
-                if len(actions):
-                    pass  # todo
+                """
+                  Note: Make sure to handle the case when a state has no available actions in an MDP 
+                  (think about what this means for future rewards).
+                """
+                if len(actions) == 0:
+                    local_q_values[None] = 0
 
                 # ArgMax (Sum s' T(s, a, s') * [R(s, a, s') + Gamma * Vk(s')])
                 # s = state, a = actions, s' = next_state, T(s, a, s') = probability
                 for action in actions:
-
                     transition = self.mdp.getTransitionStatesAndProbs(state, action)
-
                     q_value = 0
 
                     # Sum s' T(s, a, s') * [R(s, a, s') + Gamma * Vk(s')]
@@ -106,45 +110,29 @@ class ValueIterationAgent(ValueEstimationAgent):
                         # R(s, a, s')
                         reward = self.mdp.getReward(state, action, next_state)
 
-                        # Vk(s') todo
-                        v_k_action, v_k_value = self.get_max_q_value_for_k_and_state(k - 1, next_state, v_k_values)
+                        # Vk(s')
+                        v_k_action, v_k_value = self.get_max_q_value_for_k_and_state(k - 1, next_state, self.q_k_values)
 
                         q_value += probability * (reward + (self.discount * v_k_value))
 
                     local_q_values[action] = q_value
 
-                # todo when actions = 0
-                """
-                   Note: Make sure to handle the case when a state has no available actions in an MDP 
-                   (think about what this means for future rewards).
-                """
-
-                v_k_values[(k, state)] = local_q_values  # if (len(local_q_values) > 0) else dict()
-
-                # get the last iteration values
-                """
-                for (i, s) in v_k_values:
-                    if i is self.iterations:
-                        self.values[s] = v_k_values[(i, s)]
-                """
+                self.q_k_values[(k, state)] = local_q_values  # if (len(local_q_values) > 0) else dict()
 
         # get the last iteration values
-        for (i, s) in v_k_values:
+        for (i, s) in self.q_k_values:
             if i is self.iterations:
-                self.values[s] = v_k_values[(i, s)]
+                self.values[s] = self.q_k_values[(i, s)]
 
-        print('end v iteration')
-        # print('v_values = ', v_values)
-        # print('self_values = ', self.values)
 
     def get_max_q_value_for_k_and_state(self, k, state, v_k_values):
         """
         return highest => v_i_action, v_i_value
         """
-        filtered = v_k_values[(k, state)]
+        if k <= 0:
+            return None, 0
 
-        #print('v_k_values = ', v_k_values)
-        #print('filtered = ', filtered)
+        filtered = v_k_values[(k, state)]
 
         if len(filtered) == 0:
             return None, 0
@@ -155,8 +143,6 @@ class ValueIterationAgent(ValueEstimationAgent):
         """
           Return the value of the state (computed in __init__).
         """
-        #print('calling get values state = ', state)
-        #print('get values result = ', self.values[state])
 
         q_values = self.values[state]
 
@@ -165,24 +151,6 @@ class ValueIterationAgent(ValueEstimationAgent):
 
         action, value = sorted(q_values.items(), key=lambda item: item[1], reverse=True)[0]
         return value
-
-        """
-        return self.values[state]
-        """
-
-        """
-        q_values = self.values[state]
-
-        if type(q_values) is not dict:
-            return self.values[state]
-
-        if len(q_values) == 0:
-            return 0
-
-        action, value = sorted(q_values.items(), key=lambda item: item[1], reverse=True)[0]
-
-        return value
-        """
 
     def computeQValueFromValues(self, state, action):
         """
@@ -190,9 +158,21 @@ class ValueIterationAgent(ValueEstimationAgent):
           value function stored in self.values.
 
           returns the Q-value of the (state, action) pair given by the value function given by self.values
+
+
+          we need to do 1 more iteration since a policy synthesized from values of depth k
+          (which reflect the next k rewards) will actually reflect the next k+1 rewards (i.e. you return πk+1).
+          Similarly, the Q-values will also reflect one more reward than the values (i.e. you return Qk+1).
+
         """
         "*** YOUR CODE HERE ***"
-        q_values = self.values[state]
+        values = util.Counter()
+
+        for (i, s) in self.q_k_values:
+            if i is self.iterations + 1:  # Qk+1(s, a)
+                values[s] = self.q_k_values[(i, s)]
+
+        q_values = values[state]
 
         if len(q_values) == 0:
             return 0
@@ -212,9 +192,19 @@ class ValueIterationAgent(ValueEstimationAgent):
           terminal state, you should return None.
 
           computes the best action according to the value function given by self.values.
+
+          we need to do 1 more iteration since a policy synthesized from values of depth k
+          (which reflect the next k rewards) will actually reflect the next k+1 rewards (i.e. you return πk+1).
+          Similarly, the Q-values will also reflect one more reward than the values (i.e. you return Qk+1).
         """
         "*** YOUR CODE HERE ***"
-        q_values = self.values[state]
+        values = util.Counter()
+
+        for (i, s) in self.q_k_values:
+            if i is self.iterations + 1:  # PIk+1(s)
+                values[s] = self.q_k_values[(i, s)]
+
+        q_values = values[state]
 
         if self.mdp.isTerminal(state):
             return None
