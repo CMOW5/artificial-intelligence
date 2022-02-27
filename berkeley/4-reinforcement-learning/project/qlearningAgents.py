@@ -50,7 +50,6 @@ class QLearningAgent(ReinforcementAgent):
 
         "*** YOUR CODE HERE ***"
         self.q_values = dict()
-        # init q_values
 
     def getQValue(self, state, action):
         """
@@ -61,10 +60,8 @@ class QLearningAgent(ReinforcementAgent):
         "*** YOUR CODE HERE ***"
         if (state, action) not in self.q_values:
             return 0
-            #self.q_values[(state, action)] = 0
 
         return self.q_values[(state, action)]
-        #util.raiseNotDefined()
 
     def computeValueFromQValues(self, state):
         """
@@ -101,18 +98,16 @@ class QLearningAgent(ReinforcementAgent):
         actions_for_value = dict()
 
         for action in self.getLegalActions(state):
-            # todo: use dict.setdefault(key[, default_value]) ??
-            q_val = self.getQValue(state, action)
-            if q_val not in actions_for_value:
-                actions_for_value[q_val] = [action]
-            else:
-                actions = actions_for_value.get(q_val)
-                actions.append(action)
-                actions_for_value[q_val] = actions
+            q_value = self.getQValue(state, action)
+            actions_for_value.setdefault(q_value, [])
+
+            actions = actions_for_value.get(q_value)
+            actions.append(action)
+            actions_for_value[q_value] = actions
 
         # choose best actions
-        max_q_value, actions = sorted(actions_for_value.items(), key=lambda item: item[0], reverse=True)[0]
-        best_action = random.choice(actions)
+        max_q_value, best_actions = sorted(actions_for_value.items(), key=lambda item: item[0], reverse=True)[0]
+        best_action = random.choice(best_actions)
 
         return best_action
 
@@ -143,17 +138,10 @@ class QLearningAgent(ReinforcementAgent):
           it will be called on your behalf
         """
         "*** YOUR CODE HERE ***"
+        # Y * Max a' Q(s', a')
+        discounted_future = self.discount * self.computeValueFromQValues(nextState)
 
-        max_q_value = self.computeValueFromQValues(nextState)
-        """
-        max_q_value = 0
-        for action in self.getLegalActions(nextState):
-            q_val = self.getQValue(nextState, action)
-            if q_val > max_q_value:
-                max_q_value = q_val
-        """
-
-        q_sample = reward + (self.discount * max_q_value)
+        q_sample = reward + discounted_future
 
         old_estimate = self.getQValue(state, action)
 
