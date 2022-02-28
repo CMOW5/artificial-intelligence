@@ -27,6 +27,9 @@ import random,util,math
 import numpy as np
 import copy
 
+from pacman import GameState
+
+
 class QLearningAgent(ReinforcementAgent):
     """
       Q-Learning Agent
@@ -200,6 +203,8 @@ class ApproximateQAgent(PacmanQAgent):
     def __init__(self, extractor='IdentityExtractor', **args):
         self.featExtractor = util.lookup(extractor, globals())()
         PacmanQAgent.__init__(self, **args)
+
+        # the weight vector is a dictionary mapping features
         self.weights = util.Counter()
 
     def getWeights(self):
@@ -211,14 +216,32 @@ class ApproximateQAgent(PacmanQAgent):
           where * is the dotProduct operator
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        features = self.featExtractor.getFeatures(state, action)
 
-    def update(self, state, action, nextState, reward):
+        q_value_s_a = 0
+        for feature in features:
+            weight = self.weights[feature]
+            feature_value = features[feature]
+            q_value_s_a += (weight * feature_value)
+
+        return q_value_s_a
+
+
+    def update(self, state: GameState, action, nextState: GameState, reward):
         """
            Should update your weights based on transition
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        q_s_a = self.getQValue(state, action)
+        max_q_s_a_next_state = self.computeValueFromQValues(nextState)
+
+        # difference = (r + Y * max a'Q(s', a')) - Q(s, a)
+        difference = (reward + (self.discount * max_q_s_a_next_state)) - q_s_a
+
+        features = self.featExtractor.getFeatures(state, action)
+
+        for feature in features:
+            self.weights[feature] += (self.alpha * difference * features[feature])
 
     def final(self, state):
         """Called at the end of each game."""
